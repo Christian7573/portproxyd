@@ -1,4 +1,4 @@
-use std::net::{SocketAddr, TcpListener, TcpStream};
+use std::net::{SocketAddr, TcpListener, TcpStream, Shutdown};
 
 fn main() {
     let (listen_on, forward_to, buf_size) = {
@@ -72,17 +72,25 @@ fn socket(a: TcpStream, a_addr: SocketAddr, b_addr: SocketAddr, buf_size: usize,
         }
     }
 }
-fn socket_transport(mut a: TcpStream, mut b: TcpStream, buf_size: usize, _my_id: usize) {
+fn socket_transport(mut a: TcpStream, mut b: TcpStream, buf_size: usize, my_id: usize) {
     let mut buf = vec![0u8; buf_size];
     use std::io::{Read, Write};
-    while let Ok(bytes_read) = a.read(&mut buf) {
+    'outer: while let Ok(bytes_read) = a.read(&mut buf) {
+        if bytes_read == 0 { 
+            println!("a Transport died {}", my_id);
+            break 'outer;
+        }
         let mut total_written = 0;
         while total_written < bytes_read {
             match b.write(&buf[total_written..bytes_read]){
                 Ok(bytes_written) => { total_written += bytes_written; }
-                Err(_) => { println!("Socket died 2"); return }
+                Err(_) => {
+                    println!("a Transport died {} 2", my_id);
+                    break 'outer;
+                }
             }
         }
     }
-    println!("Socket died");
+    if let Err(err) = a.shutdown(Shutdown::Read) { eprintln!("Error occured while shutting down read for a transport with id {}\n{}", my_id, err); }
+    if let Err(err) = b.shutdown(Shutdown::Write) { eprintln!("Error occured while shutting down read for a transport with id {}\n{}", my_id, err); }
 }
