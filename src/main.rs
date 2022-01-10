@@ -52,6 +52,7 @@ fn main() {
                 std::process::exit(0);
             },
         }
+        println!("Socket loop!");
     }
 }
 
@@ -77,10 +78,11 @@ fn socket_transport(mut a: TcpStream, mut b: TcpStream, buf_size: usize, _my_id:
     while let Ok(bytes_read) = a.read(&mut buf) {
         let mut total_written = 0;
         while total_written < bytes_read {
-            match b.write(&buf[total_written..]){
+            match b.write(&buf[total_written..bytes_read]){
                 Ok(bytes_written) => { total_written += bytes_written; }
-                Err(_) => { return }
+                Err(_) => { println!("Socket died 2"); return }
             }
         }
     }
+    println!("Socket died");
 }
